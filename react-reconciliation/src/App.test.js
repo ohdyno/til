@@ -7,17 +7,27 @@ describe("react reconciliation", () => {
     "when inner component is defined inside the component," +
       "on rerender, inner component is rebuilt from scratch (unmounted) because it's redefined on rerender",
     async () => {
+      let unmounted = false;
       const Wrapper = () => {
         const [state, updateState] = useState("before");
-        const Inner = ({ state, handleClick }) => (
-          <div>
-            <button data-testid="button" onClick={handleClick}>
-              {state}
-            </button>
-          </div>
-        );
-        const handleClick = () => updateState("after");
-        return <Inner state={state} handleClick={handleClick} />;
+
+        class Inner extends React.Component {
+          componentWillUnmount() {
+            unmounted = true;
+          }
+
+          render() {
+            return (
+              <div>
+                <button data-testid="button" onClick={this.props.handleClick}>
+                  {this.props.state}
+                </button>
+              </div>
+            );
+          }
+        }
+
+        return <Inner state={state} handleClick={() => updateState("after")} />;
       };
 
       render(<Wrapper />);
@@ -26,7 +36,8 @@ describe("react reconciliation", () => {
       userEvent.click(button);
 
       expect(await screen.findByText("after")).toBeDefined();
-      expect(button).toBeInTheDocument();
+      expect(button).not.toBeInTheDocument();
+      expect(unmounted).toBeTruthy();
     }
   );
 
@@ -47,8 +58,7 @@ describe("react reconciliation", () => {
           []
         );
 
-        const handleClick = () => updateState("after");
-        return <Inner state={state} handleClick={handleClick} />;
+        return <Inner state={state} handleClick={() => updateState("after")} />;
       };
 
       render(<Wrapper />);
@@ -74,8 +84,7 @@ describe("react reconciliation", () => {
       );
       const Wrapper = () => {
         const [state, updateState] = useState("before");
-        const handleClick = () => updateState("after");
-        return <Inner state={state} handleClick={handleClick} />;
+        return <Inner state={state} handleClick={() => updateState("after")} />;
       };
 
       render(<Wrapper />);
